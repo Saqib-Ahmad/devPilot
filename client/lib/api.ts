@@ -87,15 +87,18 @@ async function parseError(res: Response): Promise<string> {
 
 export async function apiFetch<T>(
   path: string,
-  init?: RequestInit
+  init: RequestInit = {}
 ): Promise<T> {
+  const headers = new Headers(init.headers);
+
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const res = await fetch(`${getApiBaseUrl()}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 
   if (!res.ok) {
@@ -111,26 +114,37 @@ export async function apiFetch<T>(
 
 export const api = {
   me: () => apiFetch<User>("/api/auth/me"),
+
   logout: () =>
     apiFetch<void>("/api/auth/logout", {
       method: "POST",
     }),
+
   listRepos: (refresh = true) =>
     apiFetch<Repository[]>(`/api/repos?refresh=${refresh}`),
-  getRepo: (id: string) => apiFetch<Repository>(`/api/repos/${id}`),
+
+  getRepo: (id: string) =>
+    apiFetch<Repository>(`/api/repos/${id}`),
+
   startIndex: (id: string) =>
-    apiFetch<Repository>(`/api/repos/${id}/index`, { method: "POST" }),
+    apiFetch<Repository>(`/api/repos/${id}/index`, {
+      method: "POST",
+    }),
+
   indexStatus: (id: string) =>
     apiFetch<IndexStatusResponse>(`/api/repos/${id}/status`),
+
   createSession: (repositoryId: string, title?: string) =>
     apiFetch<ChatSession>("/api/chat/sessions", {
       method: "POST",
       body: JSON.stringify({ repositoryId, title }),
     }),
+
   listSessions: (repositoryId: string) =>
     apiFetch<ChatSession[]>(
       `/api/chat/sessions?repositoryId=${encodeURIComponent(repositoryId)}`
     ),
+
   getMessages: (sessionId: string) =>
     apiFetch<ChatMessage[]>(`/api/chat/sessions/${sessionId}`),
 };
